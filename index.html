@@ -262,64 +262,47 @@ body {
   width: 62px; height: 62px;
   display: flex; align-items: center; justify-content: center;
   position: relative; flex-shrink: 0;
+  animation: iplZoom 2.8s ease-in-out infinite alternate;
+}
+@keyframes iplZoom {
+  0%   { transform: scale(0.93); }
+  100% { transform: scale(1.06); }
 }
 
-/* Full 100% solid colour ring — not a spinner */
-.ipl-ring-1 {
+.ipl-ring-1, .ipl-ring-2, .ipl-ring-3 { display: none; }
+.ipl-logo-wrap::before { display: none; }
+.ipl-logo-wrap::after  { display: none; }
+
+.ipl-ring-svg {
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1.6px solid transparent;
-  background: conic-gradient(
-    #f5c518 0deg,
-    #ffcc00 60deg,
-    #ff6a00 140deg,
-    #cc1100 200deg,
-    #0044bb 260deg,
-    #0077ff 310deg,
-    #f5c518 360deg
-  ) border-box;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) padding-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: destination-out;
-  mask-composite: exclude;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
 }
 
-/* Shimmer sweep over the ring */
-.ipl-ring-1::after {
-  content: '';
-  position: absolute; inset: -1.6px;
-  border-radius: 50%;
-  border: 1.6px solid transparent;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(255,255,255,0.55) 20deg,
-    transparent 40deg,
-    transparent 360deg
-  ) border-box;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) padding-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: destination-out;
-  mask-composite: exclude;
+/* Shimmer sweep */
+.ipl-ring-shimmer {
+  position: absolute; inset: -5px;
+  width: calc(100% + 10px); height: calc(100% + 10px);
+  pointer-events: none; z-index: 4;
   animation: iplShimmer 3s linear infinite;
+  overflow: visible;
 }
+
 @keyframes iplShimmer { to { transform: rotate(360deg); } }
 
 /* Soft glow */
-.ipl-ring-2 {
+.ipl-ring-glow {
   position: absolute;
   inset: -10px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(245,197,24,0.13) 0%, transparent 68%);
   animation: iplPulseGlow 2.5s ease-in-out infinite alternate;
+  z-index: 1;
 }
-
-.ipl-ring-3 { display: none; }
-.ipl-logo-wrap::before { display: none; }
-.ipl-logo-wrap::after  { display: none; }
 
 @keyframes iplPulseGlow {
   0%   { opacity: 0.5; transform: scale(0.95); }
@@ -394,13 +377,9 @@ body {
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: 127px 127px;
   gap: 14px;
   margin-bottom: 28px;
-}
-
-.stat-card.hero {
-  grid-column: 1 / -1;
 }
 
 .stat-card {
@@ -890,11 +869,29 @@ tbody tr.new-row { animation: rowFlash 0.8s ease forwards; }
   <header class="hdr">
     <div class="brand">
       <div class="ipl-logo-wrap">
-        <div class="ipl-ring-1"></div>
-        <div class="ipl-ring-2"></div>
-        <div class="ipl-ring-3"></div>
-        <img class="ipl-logo-img" id="ipl-logo-img"
+        <div class="ipl-ring-glow"></div>
+        <svg class="ipl-ring-svg" viewBox="0 0 72 72">
+          <defs>
+            <linearGradient id="iplG" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%"   stop-color="#f5c518"/>
+              <stop offset="20%"  stop-color="#ffcc00"/>
+              <stop offset="40%"  stop-color="#ff6a00"/>
+              <stop offset="60%"  stop-color="#cc1100"/>
+              <stop offset="75%"  stop-color="#0044bb"/>
+              <stop offset="90%"  stop-color="#0077ff"/>
+              <stop offset="100%" stop-color="#f5c518"/>
+            </linearGradient>
+          </defs>
+          <circle cx="36" cy="36" r="34" fill="none" stroke="url(#iplG)" stroke-width="2.5"/>
+        </svg>
+        <svg class="ipl-ring-shimmer" viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r="34" fill="none"
+            stroke="rgba(255,255,255,0.55)" stroke-width="2.5"
+            stroke-dasharray="18 196" stroke-linecap="round"/>
+        </svg>
+        <img class="ipl-logo-img"
           src="https://scores.iplt20.com/ipl/images/logos/ipl-logo-new-old.png"
+          onerror="this.src='https://www.iplt20.com/assets/images/ipl-logo-new-old.png';this.onerror=function(){this.style.display='none';this.parentNode.insertAdjacentHTML('beforeend','<span style=\'font-family:Orbitron,sans-serif;font-size:0.85rem;font-weight:900;color:#f5c518;position:relative;z-index:2;\'>IPL</span>')}"
           alt="IPL Logo">
       </div>
       <div class="brand-text">
@@ -1091,10 +1088,7 @@ function teamLogoHTML(t, size) {
 function handleGoogleLogin(response) {
   try {
     var parts = response.credential.split('.');
-    // JWT uses base64url — replace url-safe chars and add padding before decoding
-    var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    while (b64.length % 4) b64 += '=';
-    var payload = JSON.parse(atob(b64));
+    var payload = JSON.parse(atob(parts[1]));
     var gUser = 'g_' + payload.email.split('@')[0];
     var users = getUsers();
     if (!users[gUser]) { users[gUser] = '__google__'; saveUsers(users); }
@@ -1111,7 +1105,7 @@ function userKey(u) { return 'ipl_data_' + u; }
 function loadUserData(u) {
   var d = JSON.parse(localStorage.getItem(userKey(u)) || '{"entries":[],"wallet":""}');
   entries = (d.entries || []).map(function(e) { e.isNew = false; return e; });
-  document.getElementById('inp-wallet').value = (d.wallet !== undefined && d.wallet !== null) ? d.wallet : '';
+  document.getElementById('inp-wallet').value = d.wallet || '';
 }
 function saveUserData() {
   if (!curUser) return;
@@ -1121,7 +1115,7 @@ function saveUserData() {
   });
   localStorage.setItem(userKey(curUser), JSON.stringify({
     entries: clean,
-    wallet: document.getElementById('inp-wallet').value === '' ? '' : parseFloat(document.getElementById('inp-wallet').value)
+    wallet: document.getElementById('inp-wallet').value
   }));
 }
 function showLogin() {
@@ -1390,7 +1384,7 @@ function renderStats() {
     if (worst === null || v < worst) { worst = v; worstD = d; }
   });
 
-  document.getElementById('s-bal').textContent = (entries.length || w !== 0) ? fINR(bal) : '—';
+  document.getElementById('s-bal').textContent = entries.length || w ? fINR(bal) : '—';
   var plEl = document.getElementById('s-pnl');
   if (totalPL === 0 && !entries.length) {
     plEl.textContent = '—';
@@ -1399,7 +1393,7 @@ function renderStats() {
     plEl.textContent = fPL(totalPL);
     plEl.className = 'hero-pl ' + (totalPL > 0 ? 'pos' : totalPL < 0 ? 'neg' : '');
   }
-  document.getElementById('hdr-bal').textContent = (entries.length || w !== 0) ? fINR(bal) : '—';
+  document.getElementById('hdr-bal').textContent = (entries.length || w) ? fINR(bal) : '—';
   document.getElementById('s-wr').textContent  = wr !== null ? wr + '%' : '—';
   document.getElementById('s-wl').textContent  = wins + 'W / ' + losses + 'L';
   document.getElementById('s-best').textContent  = best  !== null ? fPL(best)  : '—';
@@ -1447,7 +1441,7 @@ function renderChart() {
   var labels   = ['Start'];
   var balances = [w];
   var ptColors = ['rgba(255,255,255,0.35)'];
-  var ptSizes  = [3];
+  var ptSizes  = [5];
   var ptBorder = ['rgba(255,255,255,0.6)'];
   var bal = w;
 
@@ -1458,18 +1452,16 @@ function renderChart() {
     var up = dayMap[d] >= 0;
     ptColors.push(up ? '#00e5a0' : '#ff3d68');
     ptBorder.push(up ? 'rgba(0,229,160,0.6)' : 'rgba(255,61,104,0.6)');
-    ptSizes.push(4);
+    ptSizes.push(7);
   });
 
-  var canvasEl = document.getElementById('chart');
-  var ctx = canvasEl.getContext('2d');
+  var ctx = document.getElementById('chart').getContext('2d');
   if (chart) chart.destroy();
 
   var isUp = bal >= w;
   var lineColor = isUp ? '#00e5a0' : '#ff3d68';
 
-  var chartHeight = canvasEl.offsetHeight || 240;
-  var grad = ctx.createLinearGradient(0, 0, 0, chartHeight);
+  var grad = ctx.createLinearGradient(0, 0, 0, 380);
   grad.addColorStop(0,    isUp ? 'rgba(0,229,160,0.32)'  : 'rgba(255,61,104,0.32)');
   grad.addColorStop(0.35, isUp ? 'rgba(0,229,160,0.14)'  : 'rgba(255,61,104,0.14)');
   grad.addColorStop(0.7,  isUp ? 'rgba(0,229,160,0.04)'  : 'rgba(255,61,104,0.04)');
@@ -1506,9 +1498,9 @@ function renderChart() {
       data: {
         labels: ['', 'Start', ''],
         datasets: [{
-          data: [null, (w !== null && !isNaN(w)) ? w : 0, null],
+          data: [null, w || 0, null],
           borderColor: 'rgba(255,255,255,0.06)',
-          pointRadius: (w !== null && !isNaN(w)) ? [0, 3, 0] : 0,
+          pointRadius: w ? [0, 5, 0] : 0,
           pointBackgroundColor: 'rgba(255,255,255,0.2)',
           spanGaps: false
         }]
@@ -1542,7 +1534,7 @@ function renderChart() {
         pointBorderColor: ptBorder,
         pointBorderWidth: 1.5,
         pointRadius: ptSizes,
-        pointHoverRadius: 7,
+        pointHoverRadius: 10,
         pointHoverBackgroundColor: ptColors,
         pointHoverBorderColor: '#fff',
         pointHoverBorderWidth: 2,
@@ -1646,38 +1638,6 @@ document.getElementById('inp-wallet').addEventListener('input', function() {
   if (_walletDebounce) clearTimeout(_walletDebounce);
   _walletDebounce = setTimeout(function() { render(); _walletDebounce = null; }, 300);
 });
-
-// ── IPL LOGO FALLBACK ─────────────────────────────────────────────
-(function setupIplLogo() {
-  var FALLBACK_URLS = [
-    'https://scores.iplt20.com/ipl/images/logos/ipl-logo-new-old.png',
-    'https://www.iplt20.com/assets/images/ipl-logo-new-old.png',
-    'https://upload.wikimedia.org/wikipedia/en/thumb/8/84/Indian_Premier_League_Official_Logo.svg/200px-Indian_Premier_League_Official_Logo.svg.png'
-  ];
-  var img = document.getElementById('ipl-logo-img');
-  if (!img) return;
-  var idx = 0;
-  function tryNext() {
-    idx++;
-    if (idx < FALLBACK_URLS.length) {
-      img.src = FALLBACK_URLS[idx];
-    } else {
-      // All URLs failed — show text badge instead
-      img.style.display = 'none';
-      var span = document.createElement('span');
-      span.textContent = 'IPL';
-      span.style.cssText = 'font-family:Orbitron,sans-serif;font-size:0.85rem;font-weight:900;color:#f5c518;position:relative;z-index:2;letter-spacing:0.08em;';
-      img.parentNode.appendChild(span);
-      img.onerror = null;
-    }
-  }
-  img.onerror = tryNext;
-  // Also set an initial load timeout safety net — if img never loads in 4s, try next
-  var timeout = setTimeout(function() {
-    if (!img.complete || img.naturalWidth === 0) { tryNext(); }
-  }, 4000);
-  img.onload = function() { clearTimeout(timeout); };
-})();
 
 // ── BOOT ──────────────────────────────────────────────────────────
 (function boot() {
